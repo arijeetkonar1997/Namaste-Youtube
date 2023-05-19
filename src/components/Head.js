@@ -1,24 +1,35 @@
 import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toggleMenu } from "../utils/appSlice";
 import { YOUTUBE_SEARCH_API } from "../utils/constants";
-export {YOUTUBE_SEARCH_API} from "../utils/constants"
+import { cacheResults } from "../utils/searchSlice";
+export { YOUTUBE_SEARCH_API } from "../utils/constants";
 const Head = () => {
   const [searchQuery, setSearchQuery] = useState([]);
-  const [suggestions,setSuggestions]=useState([]);
-  const [showSuggestions,setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchCache = useSelector((store) => store.search);
   useEffect(() => {
-    const timer =setTimeout(() =>getSearchSuggestions(),2000);
-    return()=>{
-        clearTimeout(timer);
-    }
+    const timer = setTimeout(() => {
+      if (searchCache[searchQuery]) {
+        setSuggestions(searchCache[searchQuery]);
+      } else getSearchSuggestions();
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [searchQuery]);
 
   const getSearchSuggestions = async () => {
-    console.log("API Call-"+searchQuery);
-    const data = await fetch(YOUTUBE_SEARCH_API+searchQuery);
+    console.log("API Call-" + searchQuery);
+    const data = await fetch(YOUTUBE_SEARCH_API + searchQuery);
     const json = await data.json();
     setSuggestions(json[1]);
+    dispatch(
+      cacheResults({
+        [searchQuery]: json[1],
+      })
+    );
   };
 
   const dispatch = useDispatch();
@@ -49,22 +60,23 @@ const Head = () => {
           type="text"
           onChange={(e) => setSearchQuery(e.target.value)}
           value={searchQuery}
-          onFocus={()=>setShowSuggestions(true)}
-          onBlur={()=>setShowSuggestions(false)}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setShowSuggestions(false)}
         />
         <button className="border rounded-r-full border-gray-400 px-2 ml-0">
           🔍
         </button>
-        {showSuggestions && <div className="absolute ml-12 bg-white py-2 px-2 w-[33rem] shadow-lg rounded-lg border border-gray">
+        {showSuggestions && (
+          <div className="absolute ml-12 bg-white py-2 px-2 w-[33rem] shadow-lg rounded-lg border border-gray">
             <ul>
-                {suggestions.map((s)=>(
-                    <li key={s} className="py-2 px-3 shadow-sm hover:bg-gray-100">
-                    🔍 {s}
-                    </li>
-                ))
-                }
+              {suggestions.map((s) => (
+                <li key={s} className="py-2 px-3 shadow-sm hover:bg-gray-100">
+                  🔍 {s}
+                </li>
+              ))}
             </ul>
-        </div>}
+          </div>
+        )}
       </div>
       <div className="col-span-1">
         <img
